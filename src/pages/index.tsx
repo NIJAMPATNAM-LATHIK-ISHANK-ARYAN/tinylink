@@ -1,78 +1,238 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
+// src/pages/index.tsx
+import React, { useEffect, useState } from "react";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+function formatDate(iso?: string | null) {
+  if (!iso) return "-";
+  try {
+    const d = new Date(iso);
+    return new Intl.DateTimeFormat(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(d);
+  } catch {
+    return iso;
+  }
+}
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+type LinkItem = {
+  id: number;
+  code: string;
+  target: string;
+  clicks: number;
+  lastClicked?: string | null;
+  createdAt: string;
+};
 
-export default function Home() {
+export default function Dashboard() {
+  const [toast, setToast] = useState<string | null>(null);
+  const [links, setLinks] = useState<LinkItem[]>([]);
+  const [target, setTarget] = useState("");
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+
+  useEffect(() => {
+    fetchLinks();
+  }, []);
+
+  async function fetchLinks() {
+    try {
+      const res = await fetch("/api/links");
+      const data = await res.json();
+      setLinks(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("fetchLinks error", err);
+      setError("Failed to load links");
+    }
+  }
+
+  function validateUrl(u: string) {
+    try {
+      const parsed = new URL(u);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+
+  async function handleCreate(e?: React.FormEvent) {
+    e?.preventDefault();
+    setError(null);
+
+    if (!validateUrl(target)) {
+      setError("Please enter a valid URL (must start with http:// or https://).");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload: any = { target };
+      if (code.trim()) payload.code = code.trim();
+
+      const res = await fetch("/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.status === 201) {
+        const created = await res.json();
+        setTarget("");
+        setCode("");
+        // prepend newest
+        setLinks((s) => [created as LinkItem, ...s]);
+      } else {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        setError(err?.error ?? "Failed to create link");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Network error creating link");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDelete(codeToDelete: string) {
+    if (!confirm(`Delete short link "${codeToDelete}"?`)) return;
+    try {
+      await fetch(`/api/links/${codeToDelete}`, { method: "DELETE" });
+      setLinks((s) => s.filter((l) => l.code !== codeToDelete));
+    } catch (err) {
+      console.error("delete error", err);
+      setError("Failed to delete");
+    }
+  }
+
+  function copyShortUrl(codeToCopy: string) {
+  const url = `${baseUrl}/${codeToCopy}`;
+  try {
+    navigator.clipboard.writeText(url);
+    setToast("Copied!");
+    setTimeout(() => setToast(null), 1500);
+  } catch {
+    prompt("Copy this URL:", url);
+  }
+ }
+
+
   return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black`}
-    >
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the index.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs/pages/getting-started?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="min-h-screen bg-white text-slate-900 p-6">
+      <div className="max-w-4xl mx-auto">
+        <header className="mb-6">
+          <h1 className="text-2xl font-semibold">TinyLink — Dashboard</h1>
+          <p className="text-sm text-slate-600">Create and manage short links.</p>
+        </header>
+
+        <section className="mb-6 bg-gray-50 border rounded p-4">
+          <form onSubmit={handleCreate} className="flex flex-col gap-3">
+            <div className="flex gap-3">
+              <input
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                placeholder="https://example.com/long/path"
+                className="flex-1 p-2 border rounded"
+                aria-label="Target URL"
+              />
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Optional custom code (6-8 alnum)"
+                className="w-56 p-2 border rounded"
+                aria-label="Custom code"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 bg-slate-900 text-white rounded disabled:opacity-60"
+              >
+                {loading ? "Creating..." : "Create"}
+              </button>
+            </div>
+            {error && <div className="text-red-600 text-sm">{error}</div>}
+            <div className="text-xs text-slate-500">Code must be 6-8 alphanumeric characters (optional).</div>
+          </form>
+        </section>
+
+        <section>
+          <div className="overflow-x-auto rounded border">
+            <table className="w-full text-left">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-3 py-2">Short</th>
+                  <th className="px-3 py-2">Target</th>
+                  <th className="px-3 py-2">Clicks</th>
+                  <th className="px-3 py-2">Last Clicked</th>
+                  <th className="px-3 py-2">Created</th>
+                  <th className="px-3 py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {links.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-4 text-sm text-slate-500">
+                      No links yet.
+                    </td>
+                  </tr>
+                )}
+                {links.map((l) => (
+                  <tr key={l.code} className="border-t">
+                    <td className="px-3 py-2 align-top">
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`/${l.code}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sky-600 underline"
+                        >
+                          {l.code}
+                        </a>
+                      </div>
+                    </td>
+<td className="px-3 py-2 align-top">
+  <div className="truncate-ellipsis" title={l.target}>{l.target}</div>
+</td>
+                    <td className="px-3 py-2 align-top">{l.clicks}</td>
+                    <td className="px-3 py-2 align-top">{formatDate(l.lastClicked)}</td>
+                   <td className="px-3 py-2 align-top">{formatDate(l.createdAt)}</td>
+
+                    <td className="px-3 py-2 align-top">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => copyShortUrl(l.code)}
+                          className="px-2 py-1 text-sm border rounded"
+                        >
+                          Copy
+                        </button>
+                        <button
+                          onClick={() => handleDelete(l.code)}
+                          className="px-2 py-1 text-sm border rounded text-red-600"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <footer className="mt-6 text-sm text-slate-500">
+          <div>Assignment spec: <span className="text-slate-700">{"/mnt/data/Take-Home Assignment_ TinyLink (1) (2).pdf"}</span></div>
+        </footer>
+      </div>
+      {toast && (
+  <div className="fixed bottom-6 right-6 bg-black text-white px-4 py-2 rounded shadow-lg animate-fade-in">
+    {toast}
+  </div>
+)}
+
+    </main>
   );
 }
