@@ -70,7 +70,7 @@ export default function Dashboard() {
 
     setLoading(true);
     try {
-      const payload: any = { target };
+      const payload: any = { url: target };
       if (code.trim()) payload.code = code.trim();
 
       const res = await fetch("/api/links", {
@@ -193,9 +193,9 @@ export default function Dashboard() {
                         </a>
                       </div>
                     </td>
-<td className="px-3 py-2 align-top">
+                    <td className="px-3 py-2 align-top">
   <div className="truncate-ellipsis" title={l.target}>{l.target}</div>
-</td>
+                    </td>
                     <td className="px-3 py-2 align-top">{l.clicks}</td>
                     <td className="px-3 py-2 align-top">{formatDate(l.lastClicked)}</td>
                    <td className="px-3 py-2 align-top">{formatDate(l.createdAt)}</td>
