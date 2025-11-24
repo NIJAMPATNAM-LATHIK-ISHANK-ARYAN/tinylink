@@ -1,43 +1,48 @@
-// src/pages/api/links/[code].ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { prisma } from "../../../lib/prisma"; // relative import from src/pages/api/links
+import { prisma } from "../../../lib/prisma";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { code } = req.query;
-  if (!code || Array.isArray(code)) {
-    return res.status(400).json({ error: "Invalid code param" });
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  const codeStr = req.query.code as string;
+
+  if (!codeStr) {
+    return res.status(400).json({ error: "Missing code" });
   }
 
-  const codeStr = code as string;
-
+  // GET → fetch a single link
   if (req.method === "GET") {
     const link = await prisma.link.findFirst({
-      where: { code: codeStr, deletedAt: null },
+      where: { code: codeStr },
       select: {
         id: true,
         code: true,
-        target: true,
-        clicks: true,
-        lastClicked: true,
+        url: true,
+        hitCount: true,
         createdAt: true,
+        updatedAt: true,
       },
     });
 
-    if (!link) return res.status(404).json({ error: "Not found" });
+    if (!link) {
+      return res.status(404).json({ error: "Link not found" });
+    }
+
     return res.status(200).json(link);
   }
 
+  // DELETE → remove link
   if (req.method === "DELETE") {
-    // Check existence
-    const existing = await prisma.link.findUnique({ where: { code: codeStr } });
-    if (!existing) return res.status(404).json({ error: "Not found" });
-
-    // Hard delete. If you prefer soft-delete, replace with update(deletedAt: new Date())
-    await prisma.link.delete({ where: { code: codeStr } });
-
-    return res.status(204).end();
+    try {
+      await prisma.link.delete({
+        where: { code: codeStr },
+      });
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      return res.status(404).json({ error: "Link not found" });
+    }
   }
 
-  res.setHeader("Allow", ["GET", "DELETE"]);
-  return res.status(405).end(`Method ${req.method} Not Allowed`);
+  return res.status(405).json({ error: "Method not allowed" });
 }

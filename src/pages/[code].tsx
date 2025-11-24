@@ -1,24 +1,35 @@
-// src/pages/[code].tsx
 import { GetServerSideProps } from "next";
-import { prisma } from "../lib/prisma"; // relative import from src/pages
+import { prisma } from "../lib/prisma";
+
 
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
   const code = ctx.params?.code as string | undefined;
   if (!code) return { notFound: true };
 
-const link = await prisma.link.findFirst({ where: { code } });
-  if (!link) return { notFound: true };
-
-  // increment clicks and set lastClicked
-  await prisma.link.update({
+  // Find link by code
+  const link = await prisma.link.findFirst({
     where: { code },
-    data: { clicks: { increment: 1 }, lastClicked: new Date() },
+    select: {
+      id: true,
+      code: true,
+      url: true,
+      hitCount: true,
+    },
   });
 
+  if (!link) return { notFound: true };
+
+  // Increment hit count
+  await prisma.link.update({
+    where: { code },
+    data: { hitCount: { increment: 1 } },
+  });
+
+  // Redirect to long URL
   return {
     redirect: {
-      destination: link.target,
-      permanent: false
+      destination: link.url,
+      permanent: false,
     },
   };
 };
