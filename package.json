@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "prisma": "prisma",
+  "postinstall": "prisma generate"
+},
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "next": "16.0.3",
