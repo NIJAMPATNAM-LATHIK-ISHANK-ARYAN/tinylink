@@ -1,34 +1,32 @@
+// src/pages/[code].ts
 import { GetServerSideProps } from "next";
 import { prisma } from "../lib/prisma";
 
-
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
   const code = ctx.params?.code as string | undefined;
+
   if (!code) return { notFound: true };
 
-  // Find link by code
   const link = await prisma.link.findFirst({
     where: { code },
     select: {
       id: true,
-      code: true,
-      url: true,
-      hitCount: true,
+      target: true,
+      clicks: true,
     },
   });
 
   if (!link) return { notFound: true };
 
-  // Increment hit count
+  // update metrics
   await prisma.link.update({
     where: { code },
-    data: { hitCount: { increment: 1 } },
+    data: { clicks: { increment: 1 }, lastClicked: new Date() },
   });
 
-  // Redirect to long URL
   return {
     redirect: {
-      destination: link.url,
+      destination: link.target,
       permanent: false,
     },
   };
@@ -36,8 +34,8 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 
 export default function RedirectPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p>Redirecting…</p>
+    <div style={{ padding: 40, fontSize: 18 }}>
+      Redirecting...
     </div>
   );
 }

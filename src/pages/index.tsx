@@ -45,7 +45,6 @@ export default function Dashboard() {
       const data = await res.json();
       setLinks(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("fetchLinks error", err);
       setError("Failed to load links");
     }
   }
@@ -70,7 +69,7 @@ export default function Dashboard() {
 
     setLoading(true);
     try {
-      const payload: any = { url: target };
+      const payload: any = { target }; // FIXED
       if (code.trim()) payload.code = code.trim();
 
       const res = await fetch("/api/links", {
@@ -83,14 +82,12 @@ export default function Dashboard() {
         const created = await res.json();
         setTarget("");
         setCode("");
-        // prepend newest
-        setLinks((s) => [created as LinkItem, ...s]);
+        setLinks((s) => [created, ...s]);
       } else {
         const err = await res.json().catch(() => ({ error: "Unknown error" }));
-        setError(err?.error ?? "Failed to create link");
+        setError(err.error ?? "Failed to create link");
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
       setError("Network error creating link");
     } finally {
       setLoading(false);
@@ -102,23 +99,18 @@ export default function Dashboard() {
     try {
       await fetch(`/api/links/${codeToDelete}`, { method: "DELETE" });
       setLinks((s) => s.filter((l) => l.code !== codeToDelete));
-    } catch (err) {
-      console.error("delete error", err);
+    } catch {
       setError("Failed to delete");
     }
   }
 
   function copyShortUrl(codeToCopy: string) {
-  const url = `${baseUrl}/${codeToCopy}`;
-  try {
-    navigator.clipboard.writeText(url);
-    setToast("Copied!");
-    setTimeout(() => setToast(null), 1500);
-  } catch {
-    prompt("Copy this URL:", url);
+    const url = `${baseUrl}/${codeToCopy}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setToast("Copied!");
+      setTimeout(() => setToast(null), 1500);
+    });
   }
- }
-
 
   return (
     <main className="min-h-screen bg-white text-slate-900 p-6">
@@ -136,14 +128,12 @@ export default function Dashboard() {
                 onChange={(e) => setTarget(e.target.value)}
                 placeholder="https://example.com/long/path"
                 className="flex-1 p-2 border rounded"
-                aria-label="Target URL"
               />
               <input
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="Optional custom code (6-8 alnum)"
                 className="w-56 p-2 border rounded"
-                aria-label="Custom code"
               />
               <button
                 type="submit"
@@ -181,40 +171,33 @@ export default function Dashboard() {
                 )}
                 {links.map((l) => (
                   <tr key={l.code} className="border-t">
-                    <td className="px-3 py-2 align-top">
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={`/${l.code}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-sky-600 underline"
-                        >
-                          {l.code}
-                        </a>
-                      </div>
+                    <td className="px-3 py-2">
+                      <a
+                        href={`/${l.code}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sky-600 underline"
+                      >
+                        {l.code}
+                      </a>
                     </td>
-                    <td className="px-3 py-2 align-top">
-  <div className="truncate-ellipsis" title={l.target}>{l.target}</div>
-                    </td>
-                    <td className="px-3 py-2 align-top">{l.clicks}</td>
-                    <td className="px-3 py-2 align-top">{formatDate(l.lastClicked)}</td>
-                   <td className="px-3 py-2 align-top">{formatDate(l.createdAt)}</td>
-
-                    <td className="px-3 py-2 align-top">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => copyShortUrl(l.code)}
-                          className="px-2 py-1 text-sm border rounded"
-                        >
-                          Copy
-                        </button>
-                        <button
-                          onClick={() => handleDelete(l.code)}
-                          className="px-2 py-1 text-sm border rounded text-red-600"
-                        >
-                          Delete
-                        </button>
-                      </div>
+                    <td className="px-3 py-2 truncate">{l.target}</td>
+                    <td className="px-3 py-2">{l.clicks}</td>
+                    <td className="px-3 py-2">{formatDate(l.lastClicked)}</td>
+                    <td className="px-3 py-2">{formatDate(l.createdAt)}</td>
+                    <td className="px-3 py-2">
+                      <button
+                        onClick={() => copyShortUrl(l.code)}
+                        className="px-2 py-1 text-sm border rounded"
+                      >
+                        Copy
+                      </button>
+                      <button
+                        onClick={() => handleDelete(l.code)}
+                        className="px-2 py-1 text-sm border rounded text-red-600"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -222,17 +205,13 @@ export default function Dashboard() {
             </table>
           </div>
         </section>
-
-        <footer className="mt-6 text-sm text-slate-500">
-          <div>Assignment spec: <span className="text-slate-700">{"/mnt/data/Take-Home Assignment_ TinyLink (1) (2).pdf"}</span></div>
-        </footer>
       </div>
-      {toast && (
-  <div className="fixed bottom-6 right-6 bg-black text-white px-4 py-2 rounded shadow-lg animate-fade-in">
-    {toast}
-  </div>
-)}
 
+      {toast && (
+        <div className="fixed bottom-6 right-6 bg-black text-white px-4 py-2 rounded shadow-lg">
+          {toast}
+        </div>
+      )}
     </main>
   );
 }
