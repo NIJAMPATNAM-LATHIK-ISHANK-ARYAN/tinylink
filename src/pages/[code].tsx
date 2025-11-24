@@ -6,7 +6,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
   const code = ctx.params?.code as string | undefined;
   if (!code) return { notFound: true };
 
-  const link = await prisma.link.findFirst({ where: { code, deletedAt: null } });
+const link = await prisma.link.findFirst({ where: { code } });
   if (!link) return { notFound: true };
 
   // increment clicks and set lastClicked
