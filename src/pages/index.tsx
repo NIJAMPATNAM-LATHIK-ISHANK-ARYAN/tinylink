@@ -1,22 +1,6 @@
 // src/pages/index.tsx
 import React, { useEffect, useState } from "react";
 
-function formatDate(iso?: string | null) {
-  if (!iso) return "-";
-  try {
-    const d = new Date(iso);
-    return new Intl.DateTimeFormat(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(d);
-  } catch {
-    return iso;
-  }
-}
-
 type LinkItem = {
   id: number;
   code: string;
@@ -26,13 +10,28 @@ type LinkItem = {
   createdAt: string;
 };
 
+function formatDate(iso?: string | null) {
+  if (!iso) return "-";
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
 export default function Dashboard() {
   const [toast, setToast] = useState<string | null>(null);
   const [links, setLinks] = useState<LinkItem[]>([]);
   const [target, setTarget] = useState("");
   const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   useEffect(() => {
@@ -45,7 +44,8 @@ export default function Dashboard() {
       const data = await res.json();
       setLinks(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError("Failed to load links");
+      console.error("Error loading links", err);
+      setError("Failed to fetch links");
     }
   }
 
@@ -58,20 +58,21 @@ export default function Dashboard() {
     }
   }
 
-  async function handleCreate(e?: React.FormEvent) {
-    e?.preventDefault();
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
     setError(null);
 
     if (!validateUrl(target)) {
-      setError("Please enter a valid URL (must start with http:// or https://).");
+      setError("Please enter a valid URL starting with http:// or https://");
       return;
     }
 
     setLoading(true);
-    try {
-      const payload: any = { target }; // FIXED
-      if (code.trim()) payload.code = code.trim();
 
+    const payload: any = { target }; // IMPORTANT
+    if (code.trim()) payload.code = code.trim();
+
+    try {
       const res = await fetch("/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,138 +81,120 @@ export default function Dashboard() {
 
       if (res.status === 201) {
         const created = await res.json();
+        setLinks((prev) => [created, ...prev]);
         setTarget("");
         setCode("");
-        setLinks((s) => [created, ...s]);
       } else {
-        const err = await res.json().catch(() => ({ error: "Unknown error" }));
-        setError(err.error ?? "Failed to create link");
+        const err = await res.json();
+        setError(err.error || "Unknown error");
       }
-    } catch {
-      setError("Network error creating link");
+    } catch (err) {
+      console.error(err);
+      setError("Network error");
     } finally {
       setLoading(false);
     }
   }
 
   async function handleDelete(codeToDelete: string) {
-    if (!confirm(`Delete short link "${codeToDelete}"?`)) return;
-    try {
-      await fetch(`/api/links/${codeToDelete}`, { method: "DELETE" });
-      setLinks((s) => s.filter((l) => l.code !== codeToDelete));
-    } catch {
-      setError("Failed to delete");
-    }
+    if (!confirm(`Delete "${codeToDelete}"?`)) return;
+    await fetch(`/api/links/${codeToDelete}`, { method: "DELETE" });
+    setLinks((prev) => prev.filter((l) => l.code !== codeToDelete));
   }
 
-  function copyShortUrl(codeToCopy: string) {
-    const url = `${baseUrl}/${codeToCopy}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setToast("Copied!");
-      setTimeout(() => setToast(null), 1500);
-    });
+  function copyShort(code: string) {
+    const shortUrl = `${baseUrl}/${code}`;
+    navigator.clipboard.writeText(shortUrl);
+    setToast("Copied!");
+    setTimeout(() => setToast(null), 1200);
   }
 
   return (
-    <main className="min-h-screen bg-white text-slate-900 p-6">
+    <main className="min-h-screen p-6 bg-white text-slate-900">
       <div className="max-w-4xl mx-auto">
-        <header className="mb-6">
-          <h1 className="text-2xl font-semibold">TinyLink — Dashboard</h1>
-          <p className="text-sm text-slate-600">Create and manage short links.</p>
-        </header>
+        <h1 className="text-2xl font-semibold">TinyLink — Dashboard</h1>
 
-        <section className="mb-6 bg-gray-50 border rounded p-4">
-          <form onSubmit={handleCreate} className="flex flex-col gap-3">
-            <div className="flex gap-3">
-              <input
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-                placeholder="https://example.com/long/path"
-                className="flex-1 p-2 border rounded"
-              />
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="Optional custom code (6-8 alnum)"
-                className="w-56 p-2 border rounded"
-              />
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-4 py-2 bg-slate-900 text-white rounded disabled:opacity-60"
-              >
-                {loading ? "Creating..." : "Create"}
-              </button>
-            </div>
-            {error && <div className="text-red-600 text-sm">{error}</div>}
-            <div className="text-xs text-slate-500">Code must be 6-8 alphanumeric characters (optional).</div>
-          </form>
-        </section>
+        <form onSubmit={handleCreate} className="mt-5 flex gap-3">
+          <input
+            className="flex-1 p-2 border rounded"
+            placeholder="https://example.com"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+          />
+          <input
+            className="w-48 p-2 border rounded"
+            placeholder="Optional code"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <button
+            className="px-4 bg-black text-white rounded"
+            disabled={loading}
+          >
+            {loading ? "Creating…" : "Create"}
+          </button>
+        </form>
 
-        <section>
-          <div className="overflow-x-auto rounded border">
-            <table className="w-full text-left">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="px-3 py-2">Short</th>
-                  <th className="px-3 py-2">Target</th>
-                  <th className="px-3 py-2">Clicks</th>
-                  <th className="px-3 py-2">Last Clicked</th>
-                  <th className="px-3 py-2">Created</th>
-                  <th className="px-3 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {links.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="p-4 text-sm text-slate-500">
-                      No links yet.
-                    </td>
-                  </tr>
-                )}
-                {links.map((l) => (
-                  <tr key={l.code} className="border-t">
-                    <td className="px-3 py-2">
-                      <a
-                        href={`/${l.code}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sky-600 underline"
-                      >
-                        {l.code}
-                      </a>
-                    </td>
-                    <td className="px-3 py-2 truncate">{l.target}</td>
-                    <td className="px-3 py-2">{l.clicks}</td>
-                    <td className="px-3 py-2">{formatDate(l.lastClicked)}</td>
-                    <td className="px-3 py-2">{formatDate(l.createdAt)}</td>
-                    <td className="px-3 py-2">
-                      <button
-                        onClick={() => copyShortUrl(l.code)}
-                        className="px-2 py-1 text-sm border rounded"
-                      >
-                        Copy
-                      </button>
-                      <button
-                        onClick={() => handleDelete(l.code)}
-                        className="px-2 py-1 text-sm border rounded text-red-600"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {error && <div className="text-red-600 mt-2">{error}</div>}
+
+        <table className="w-full mt-6 border">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="p-2">Short</th>
+              <th className="p-2">Target</th>
+              <th className="p-2">Clicks</th>
+              <th className="p-2">Created</th>
+              <th className="p-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {links.length === 0 && (
+              <tr>
+                <td colSpan={5} className="p-4 text-center text-gray-500">
+                  No links yet.
+                </td>
+              </tr>
+            )}
+
+            {links.map((l) => (
+              <tr key={l.code} className="border-t">
+                <td className="p-2">
+                  <a
+                    className="text-sky-600 underline"
+                    href={`/${l.code}`}
+                    target="_blank"
+                  >
+                    {l.code}
+                  </a>
+                </td>
+                <td className="p-2">{l.target}</td>
+                <td className="p-2">{l.clicks}</td>
+                <td className="p-2">{formatDate(l.createdAt)}</td>
+                <td className="p-2 flex gap-2">
+                  <button
+                    onClick={() => copyShort(l.code)}
+                    className="px-2 py-1 border rounded"
+                  >
+                    Copy
+                  </button>
+                  <button
+                    onClick={() => handleDelete(l.code)}
+                    className="px-2 py-1 border rounded text-red-600"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {toast && (
+          <div className="fixed bottom-6 right-6 bg-black text-white p-3 rounded shadow">
+            {toast}
           </div>
-        </section>
+        )}
       </div>
-
-      {toast && (
-        <div className="fixed bottom-6 right-6 bg-black text-white px-4 py-2 rounded shadow-lg">
-          {toast}
-        </div>
-      )}
     </main>
   );
 }
