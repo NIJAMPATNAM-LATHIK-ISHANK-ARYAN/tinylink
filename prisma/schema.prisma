@@ -3,19 +3,15 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model Link {
-  id          Int      @id @default(autoincrement())
-  code        String   @unique
-  target      String
-  clicks      Int      @default(0)
-  lastClicked DateTime? @map("last_clicked")
-  createdAt   DateTime @default(now()) @map("created_at")
-  deletedAt   DateTime? @map("deleted_at")
-
-  @@map("links")
-  @@index([code])
+  id        String   @id @default(cuid())
+  code      String   @unique
+  url       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  hitCount  Int      @default(0)
 }
