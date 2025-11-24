@@ -9,11 +9,12 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { url, code } = req.body;
+  const { target, code } = req.body;
+const url = target;  // map incoming field
 
-  if (!url || !code) {
-    return res.status(400).json({ error: "Missing url or code" });
-  }
+if (!url) {
+  return res.status(400).json({ error: "Missing url or code" });
+}
 
   try {
     const newLink = await prisma.link.create({
