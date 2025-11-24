@@ -15,7 +15,6 @@ export default async function handler(
         code: true,
         url: true,
         hitCount: true,
-        lastClicked: true,
         createdAt: true,
       },
     });
