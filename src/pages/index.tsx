@@ -121,14 +121,14 @@ export default function Dashboard() {
         <form onSubmit={handleCreate} className="mt-6 bg-gray-50 p-4 border rounded flex gap-3">
           <input
             value={url}
-            onChange={(e) => setTarget(e.url.value)}
+            onChange={(e) => setTarget(e.currentTarget.value)}
             placeholder="https://example.com"
             className="flex-1 p-2 border rounded"
           />
 
           <input
             value={code}
-            onChange={(e) => setCode(e.url.value)}
+            onChange={(e) => setCode(e.currentTarget.value)}
             placeholder="Optional code"
             className="w-52 p-2 border rounded"
           />
@@ -154,7 +154,7 @@ export default function Dashboard() {
             {links.map((l) => (
               <tr key={l.code} className="border-t">
                 <td className="p-2">
-                  <a href={`/${l.code}`} url="_blank" className="text-blue-600 underline">
+                  <a href={`/${l.code}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
                     {l.code}
                   </a>
                 </td>
