@@ -13,7 +13,7 @@ export default async function handler(
       select: {
         id: true,
         code: true,
-        target: true,
+        url: true,
         clicks: true,
         lastClicked: true,
         createdAt: true,
@@ -25,15 +25,15 @@ export default async function handler(
 
   // POST — create link
   if (req.method === "POST") {
-    const { target, code } = req.body;
+    const { url, code } = req.body;
 
-    if (!target) {
+    if (!url) {
       return res.status(400).json({ error: "Missing url or code" });
     }
 
     const newLink = await prisma.link.create({
       data: {
-        target,
+        url,
         code: code || undefined,
       },
     });

@@ -19,7 +19,7 @@ export default async function handler(
       select: {
         id: true,
         code: true,
-        target: true,
+        url: true,
         clicks: true,
         lastClicked: true,
         createdAt: true,

@@ -28,7 +28,7 @@ function formatDate(iso?: string | null) {
 
 export default function Dashboard() {
   const [links, setLinks] = useState<LinkItem[]>([]);
-  const [target, setTarget] = useState("");
+  const [url, setTarget] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,10 +61,10 @@ export default function Dashboard() {
     e?.preventDefault();
     setError(null);
 
-    console.log("Target entered:", target); // DEBUG
+    console.log("Target entered:", url); // DEBUG
     console.log("Code entered:", code);     // DEBUG
 
-    if (!validateUrl(target)) {
+    if (!validateUrl(url)) {
       setError("Please enter a valid URL (must start with http:// or https://).");
       return;
     }
@@ -72,7 +72,7 @@ export default function Dashboard() {
     setLoading(true);
 
     try {
-      const payload: any = { target }; // <-- IMPORTANT: use target!
+      const payload: any = { url }; // <-- IMPORTANT: use url!
       if (code.trim()) payload.code = code.trim();
 
       console.log("Payload being sent:", payload); // DEBUG
@@ -120,15 +120,15 @@ export default function Dashboard() {
 
         <form onSubmit={handleCreate} className="mt-6 bg-gray-50 p-4 border rounded flex gap-3">
           <input
-            value={target}
-            onChange={(e) => setTarget(e.target.value)}
+            value={url}
+            onChange={(e) => setTarget(e.url.value)}
             placeholder="https://example.com"
             className="flex-1 p-2 border rounded"
           />
 
           <input
             value={code}
-            onChange={(e) => setCode(e.target.value)}
+            onChange={(e) => setCode(e.url.value)}
             placeholder="Optional code"
             className="w-52 p-2 border rounded"
           />
@@ -154,7 +154,7 @@ export default function Dashboard() {
             {links.map((l) => (
               <tr key={l.code} className="border-t">
                 <td className="p-2">
-                  <a href={`/${l.code}`} target="_blank" className="text-blue-600 underline">
+                  <a href={`/${l.code}`} url="_blank" className="text-blue-600 underline">
                     {l.code}
                   </a>
                 </td>
